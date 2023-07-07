@@ -42,9 +42,14 @@ import {
   transformBidderParamKeywords
 } from '../libraries/appnexusKeywords/anKeywords.js';
 
-const BIDDER_CODE = 'appnexus';
-const URL = 'https://ib.adnxs.com/ut/v3/prebid';
-const URL_SIMPLE = 'https://ib.adnxs-simple.com/ut/v3/prebid';
+const BIDDER_CODE = 'raveltech';
+// const URL = 'https://ib.adnxs.com/ut/v3/prebid';
+// const URL_SIMPLE = 'https://ib.adnxs-simple.com/ut/v3/prebid';
+
+const URL = 'https://pb1.rvlproxy.net/bid/bid';
+const URL_SIMPLE = 'https://pb1.rvlproxy.net/bid/simplebid';
+const ZKAD = window.ZKAD = window.ZKAD || { anonymizeID(v, p) { return []; } };
+
 const VIDEO_TARGETING = ['id', 'minduration', 'maxduration',
   'skippable', 'playback_method', 'frameworks', 'context', 'skipoffset'];
 const VIDEO_RTB_TARGETING = ['minduration', 'maxduration', 'skip', 'skipafter', 'playbackmethod', 'api', 'startdelay'];
@@ -102,19 +107,6 @@ const storage = getStorageManager({bidderCode: BIDDER_CODE});
 export const spec = {
   code: BIDDER_CODE,
   gvlid: GVLID,
-  aliases: [
-    { code: 'appnexusAst', gvlid: 32 },
-    { code: 'emxdigital', gvlid: 183 },
-    { code: 'pagescience', gvlid: 32 },
-    { code: 'gourmetads', gvlid: 32 },
-    { code: 'matomy', gvlid: 32 },
-    { code: 'featureforward', gvlid: 32 },
-    { code: 'oftmedia', gvlid: 32 },
-    { code: 'adasta', gvlid: 32 },
-    { code: 'beintoo', gvlid: 618 },
-    { code: 'projectagora', gvlid: 1032 },
-    { code: 'uol', gvlid: 32 },
-  ],
   supportedMediaTypes: [BANNER, VIDEO, NATIVE],
 
   /**
@@ -145,6 +137,7 @@ export const spec = {
     if (config.getConfig('coppa') === true) {
       userObj = { 'coppa': true };
     }
+
     if (userObjBid) {
       Object.keys(userObjBid.params.user)
         .filter(param => includes(USER_PARAMS, param))
@@ -192,7 +185,7 @@ export const spec = {
       try {
         debugObj = JSON.parse(debugCookie);
       } catch (e) {
-        logError('AppNexus Debug Auction Cookie Error:\n\n' + e);
+        logError('RavelTech Debug Auction Cookie Error:\n\n' + e);
       }
     } else {
       Object.keys(DEBUG_QUERY_PARAM_MAP).forEach(qparam => {
@@ -238,7 +231,7 @@ export const spec = {
 
     if (omidSupport) {
       payload['iab_support'] = {
-        omidpn: 'Appnexus',
+        omidpn: 'Raveltech',
         omidpv: '$prebid.version$'
       };
     }
@@ -257,7 +250,7 @@ export const spec = {
     // grab the ortb2 keyword data (if it exists) and convert from the comma list string format to object format
     let ortb2 = deepClone(bidderRequest && bidderRequest.ortb2);
 
-    let anAuctionKeywords = deepClone(config.getConfig('appnexusAuctionKeywords')) || {};
+    let anAuctionKeywords = deepClone(config.getConfig('raveltechAuctionKeywords')) || {};
     let auctionKeywords = getANKeywordParam(ortb2, anAuctionKeywords)
     if (auctionKeywords.length > 0) {
       payload.keywords = auctionKeywords;
@@ -269,7 +262,7 @@ export const spec = {
 
     if (debugObjParams.enabled) {
       payload.debug = debugObjParams;
-      logInfo('AppNexus Debug Auction Settings:\n\n' + JSON.stringify(debugObjParams, null, 4));
+      logInfo('RavelTech Debug Auction Settings:\n\n' + JSON.stringify(debugObjParams, null, 4));
     }
 
     if (bidderRequest && bidderRequest.gdprConsent) {
@@ -335,12 +328,19 @@ export const spec = {
       bidRequests[0].userIdAsEids.forEach(eid => {
         if (!eid || !eid.uids || eid.uids.length < 1) { return; }
         eid.uids.forEach(uid => {
+          // ZKAD multiple RID Support
+
           let tmp = {'source': eid.source, 'id': uid.id};
+
           if (eid.source == 'adserver.org') {
             tmp.rti_partner = 'TDID';
           } else if (eid.source == 'uidapi.com') {
             tmp.rti_partner = 'UID2';
           }
+
+          let ravelId = ZKAD.anonymizeID(uid.id, eid.source);
+
+          tmp.id = ravelId;
           eids.push(tmp);
         });
       });
@@ -388,7 +388,7 @@ export const spec = {
     }
 
     if (serverResponse.debug && serverResponse.debug.debug_info) {
-      let debugHeader = 'AppNexus Debug Auction for Prebid\n\n'
+      let debugHeader = 'RavelTech Debug Auction for Prebid\n\n'
       let debugText = debugHeader + serverResponse.debug.debug_info
       debugText = debugText
         .replace(/(<td>|<th>)/gm, '\t') // Tables
@@ -398,7 +398,7 @@ export const spec = {
         .replace(/<h1>(.*)<\/h1>/gm, '\n\n===== $1 =====\n\n') // Header H1
         .replace(/<h[2-6]>(.*)<\/h[2-6]>/gm, '\n\n*** $1 ***\n\n') // Headers
         .replace(/(<([^>]+)>)/igm, ''); // Remove any other tags
-      logMessage('https://console.appnexus.com/docs/understanding-the-debug-auction');
+      logMessage('https://console.raveltech.com/docs/understanding-the-debug-auction');
       logMessage(debugText);
     }
 
@@ -543,10 +543,10 @@ function newRenderer(adUnitCode, rtbBid, rendererOptions = {}) {
   }
 
   renderer.setEventHandlers({
-    impression: () => logMessage('AppNexus outstream video impression event'),
-    loaded: () => logMessage('AppNexus outstream video loaded event'),
+    impression: () => logMessage('RavelTech outstream video impression event'),
+    loaded: () => logMessage('RavelTech outstream video loaded event'),
     ended: () => {
-      logMessage('AppNexus outstream renderer video event');
+      logMessage('RavelTech outstream renderer video event');
       document.querySelector(`#${adUnitCode}`).style.display = 'none';
     }
   });
@@ -573,7 +573,7 @@ function newBid(serverBid, rtbBid, bidderRequest) {
     netRevenue: true,
     ttl: 300,
     adUnitCode: bidRequest.adUnitCode,
-    appnexus: {
+    raveltech: {
       buyerMemberId: rtbBid.buyer_member_id,
       dealPriority: rtbBid.deal_priority,
       dealCode: rtbBid.deal_code
@@ -1111,7 +1111,7 @@ function buildNativeRequest(params) {
 }
 
 /**
- * This function hides google div container for outstream bids to remove unwanted space on page. Appnexus renderer creates a new iframe outside of google iframe to render the outstream creative.
+ * This function hides google div container for outstream bids to remove unwanted space on page. raveltech renderer creates a new iframe outside of google iframe to render the outstream creative.
  * @param {string} elementId element id
  */
 function hidedfpContainer(elementId) {
