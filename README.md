@@ -7,6 +7,19 @@
 
 This repository is a private fork of https://github.com/prebid/Prebid.js with an extra adapter added: `raveltechBidAdapter`, which is a slight modification of the `appnexusBidAdapter`. The test/build/run should work as expected.
 
+### Integration examples
+Some integration examples have been added in the [./integrationExamples/gpt](./integrationExamples/gpt) folder with files containing `raveltech` in their names.
+
+Integration examples can be run e.g. with
+```
+gulp serve --notest --modules=raveltechBidAdapter,appnexusBidAdapter,userId,id5IdSystem,pubProvidedIdSystem
+```
+then opening `http://localhost:999/` then browsing to the file in question.
+
+Note:
+- Some extra modules may be needed
+- `--notest` to not run tests, some tests fail in bid adapters that is not ours.
+
 # Prebid.js
 
 > A free and open source library for publishers to quickly implement header bidding.
