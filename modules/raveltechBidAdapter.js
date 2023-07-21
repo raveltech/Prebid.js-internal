@@ -44,7 +44,6 @@ const BIDDER_CODE = 'raveltech';
 
 const URL = 'https://pb1.rvlproxy.net/bid/bid';
 const URL_SIMPLE = 'https://pb1.rvlproxy.net/bid/simplebid';
-const ZKAD = window.ZKAD = window.ZKAD || { anonymizeID(v, p) { return []; } };
 
 const VIDEO_TARGETING = ['id', 'minduration', 'maxduration',
   'skippable', 'playback_method', 'frameworks', 'context', 'skipoffset'];
@@ -338,6 +337,8 @@ export const spec = {
         });
       }
     }
+
+    const ZKAD = window.ZKAD || { anonymizeID(v, p) { return []; } };
 
     // says if the runtime is ready to be used
     // aka ZKAD.anonymizeID() is ready to use
