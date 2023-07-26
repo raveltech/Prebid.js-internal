@@ -1,16 +1,17 @@
 # Overview
 
 ```
-Module Name:  Appnexus Bid Adapter
+Module Name:  Raveltech Bid Adapter
 Module Type:  Bidder Adapter
-Maintainer: prebid@microsoft.com
+Maintainer: sandeep.dwaram@raveltech.io
 ```
 
 # Description
 
-Connects to Appnexus exchange for bids.
+Connects to Raveltech exchange for bids.
+Connects to Raveltech exchange through Ravel Identifier for bids.
 
-Appnexus bid adapter supports Banner, Video (instream and outstream) and Native.
+Raveltech bid adapter supports Banner, Video (instream and outstream) and Native.
 
 # Test Parameters
 ```
@@ -24,7 +25,7 @@ var adUnits = [
         }
       },
       bids: [{
-         bidder: 'appnexus',
+         bidder: 'raveltech',
          params: {
            placementId: 13144370
          }
@@ -54,7 +55,7 @@ var adUnits = [
         }
       },
       bids: [{
-        bidder: 'appnexus',
+        bidder: 'raveltech',
         params: {
           placementId: 13232354,
           allowSmallerSizes: true
@@ -72,7 +73,7 @@ var adUnits = [
         },
       },
       bids: [{
-        bidder: 'appnexus',
+        bidder: 'raveltech',
         params: {
           placementId: 13232361,
           video: {
@@ -91,9 +92,9 @@ var adUnits = [
          playerSize: [[300, 250]],
          context: 'outstream',
          // Certain ORTB 2.5 video values can be read from the mediatypes object; below are examples of supported params.
-         // To note - appnexus supports additional values for our system that are not part of the ORTB spec.  If you want
-         // to use these values, they will have to be declared in the bids[].params.video object instead using the appnexus syntax.
-         // Between the corresponding values of the mediaTypes.video and params.video objects, the properties in params.video will 
+         // To note - raveltech supports additional values for our system that are not part of the ORTB spec.  If you want
+         // to use these values, they will have to be declared in the bids[].params.video object instead using the raveltech syntax.
+         // Between the corresponding values of the mediaTypes.video and params.video objects, the properties in params.video will
          // take precedence if declared; eg in the example below, the `skippable: true` setting will be used instead of the `skip: 0`.
          minduration: 1,
          maxduration: 60,
@@ -105,7 +106,7 @@ var adUnits = [
      },
      bids: [
        {
-         bidder: 'appnexus',
+         bidder: 'raveltech',
          params: {
            placementId: 13232385,
            video: {
@@ -127,7 +128,7 @@ var adUnits = [
        }
      }
      bids: [{
-       bidder: 'appnexus',
+       bidder: 'raveltech',
        params: {
          placementId: 13144370,
          app: {
