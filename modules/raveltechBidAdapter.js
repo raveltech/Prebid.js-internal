@@ -335,6 +335,10 @@ export const spec = {
         });
       }
     }
+    // says if the runtime is ready to be used
+    // aka ZKAD.anonymizeID() is ready to use
+    // note if ZKAD is not available, variable will be undefined
+    logInfo('ZKAD.ready=', ZKAD.ready)
 
     if (bidRequests[0].userId) {
       let eids = [];
@@ -350,6 +354,7 @@ export const spec = {
           }
 
           let ravelId = ZKAD.anonymizeID(uid.id, eid.source);
+          logInfo('Anonymized uid.id=', uid.id, 'as byte array of length=', ravelId.length)
 
           tmp.id = ravelId;
           eids.push(tmp);
