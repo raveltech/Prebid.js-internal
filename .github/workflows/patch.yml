@@ -1,0 +1,30 @@
+name: Patch Prebid.js
+
+permissions:
+  contents : write
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'version'
+        required: true
+        type: string
+      
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the patch
+      uses: actions/checkout@v4.1.1
+      with:
+        ref: patch
+    - name: Add Prebidjs as an upstream
+      run: git remote add prebid https://github.com/prebid/Prebid.js.git && git fetch prebid
+    - name: Create new version brach
+      run: git checkout -b "raveltech-${{inputs.version}}"
+    - name: Rebase on Prebid.js' new version
+      run: git rebase tags/${{inputs.version}}
+    - name: Push branch
+      run: git push -u origin "raveltech-${{inputs.version}}"
+      
