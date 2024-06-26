@@ -102,6 +102,19 @@ const storage = getStorageManager({bidderCode: BIDDER_CODE});
 export const spec = {
   code: BIDDER_CODE,
   gvlid: GVLID,
+  aliases: [
+    { code: 'appnexusAst', gvlid: 32 },
+    { code: 'emxdigital', gvlid: 183 },
+    { code: 'pagescience', gvlid: 32 },
+    { code: 'gourmetads', gvlid: 32 },
+    { code: 'matomy', gvlid: 32 },
+    { code: 'featureforward', gvlid: 32 },
+    { code: 'oftmedia', gvlid: 32 },
+    { code: 'adasta', gvlid: 32 },
+    { code: 'beintoo', gvlid: 618 },
+    { code: 'projectagora', gvlid: 1032 },
+    { code: 'uol', gvlid: 32 },
+  ],
   supportedMediaTypes: [BANNER, VIDEO, NATIVE],
 
   /**
@@ -400,7 +413,7 @@ export const spec = {
         .replace(/<h1>(.*)<\/h1>/gm, '\n\n===== $1 =====\n\n') // Header H1
         .replace(/<h[2-6]>(.*)<\/h[2-6]>/gm, '\n\n*** $1 ***\n\n') // Headers
         .replace(/(<([^>]+)>)/igm, ''); // Remove any other tags
-      logMessage('https://console.raveltech.com/docs/understanding-the-debug-auction');
+      logMessage('https://console.appnexus.com/docs/understanding-the-debug-auction');
       logMessage(debugText);
     }
 
@@ -1033,7 +1046,7 @@ function createAdPodRequest(tags, adPodBid) {
   const { durationRangeSec, requireExactDuration } = adPodBid.mediaTypes.video;
 
   const numberOfPlacements = getAdPodPlacementNumber(adPodBid.mediaTypes.video);
-  const maxDuration = Math.max(durationRangeSec);
+  const maxDuration = Math.max(...durationRangeSec);
 
   const tagToDuplicate = tags.filter(tag => tag.uuid === adPodBid.bidId);
   let request = fill(...tagToDuplicate, numberOfPlacements);
@@ -1059,7 +1072,7 @@ function createAdPodRequest(tags, adPodBid) {
 
 function getAdPodPlacementNumber(videoParams) {
   const { adPodDurationSec, durationRangeSec, requireExactDuration } = videoParams;
-  const minAllowedDuration = Math.min(durationRangeSec);
+  const minAllowedDuration = Math.min(...durationRangeSec);
   const numberOfPlacements = Math.floor(adPodDurationSec / minAllowedDuration);
 
   return requireExactDuration
@@ -1113,7 +1126,7 @@ function buildNativeRequest(params) {
 }
 
 /**
- * This function hides google div container for outstream bids to remove unwanted space on page. raveltech renderer creates a new iframe outside of google iframe to render the outstream creative.
+ * This function hides google div container for outstream bids to remove unwanted space on page. Appnexus renderer creates a new iframe outside of google iframe to render the outstream creative.
  * @param {string} elementId element id
  */
 function hidedfpContainer(elementId) {
