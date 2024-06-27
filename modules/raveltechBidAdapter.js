@@ -27,7 +27,7 @@ export const raveltechBidAdapter = {
       let omidSupport = config.getConfig('omidSupport');
       if (omidSupport) {
         payload['iab_support'] = {
-          omidpn: 'Raveltech',
+          omidpn: 'RavelTech',
           omidpv: '$prebid.version$'
         };
       }
@@ -71,35 +71,6 @@ export const raveltechBidAdapter = {
     });
 
     return requests;
-  },
-
-  interpretResponse: function(serverResponse, request) {
-    const bidResponses = [];
-    const response = serverResponse.body;
-
-    response.seatbid.forEach(seatBid => {
-      seatBid.bid.forEach(serverBid => {
-        const bid = {
-          adId: serverBid.id,
-          requestId: serverBid.uuid,
-          cpm: serverBid.price,
-          creativeId: serverBid.crid,
-          dealId: serverBid.dealid,
-          currency: 'USD',
-          netRevenue: true,
-          ttl: 300,
-          adUnitCode: request.adUnitCode,
-          raveltech: {
-            buyerMemberId: serverBid.ext && serverBid.ext.buyer_member_id,
-            dealPriority: serverBid.ext && serverBid.ext.deal_priority,
-            dealCode: serverBid.ext && serverBid.ext.deal_code,
-          }
-        };
-        bidResponses.push(bid);
-      });
-    });
-
-    return bidResponses;
   }
 };
 
