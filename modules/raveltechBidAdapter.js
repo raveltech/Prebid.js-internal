@@ -32,6 +32,13 @@ export const raveltechBidAdapter = {
         };
       }
 
+      const ZKAD = window.ZKAD || { anonymizeID(v, p) { return []; } };
+
+      // indicates if the runtime is ready to be used
+      // aka ZKAD.anonymizeID() is ready to use
+      // note if ZKAD is not available, variable will be undefined
+      logInfo('ZKAD.ready=', ZKAD.ready)
+
       // EIDs
       if (bidRequests[0].userId) {
         let eids = [];
