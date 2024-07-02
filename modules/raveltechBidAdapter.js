@@ -1,8 +1,8 @@
 // Import the base adapter
-import { appnexusBidAdapter } from 'modules/appnexusBidAdapter.js';
-import { registerBidder } from 'src/adapters/bidderFactory.js';
-import { logError, logInfo, logMessage, deepClone } from 'src/utils.js';
-import { config } from 'src/config.js';
+import { appnexusBidAdapter } from './appnexusBidAdapter.js';
+import { registerBidder } from '../src/adapters/bidderFactory.js';
+import { logInfo } from '../src/utils.js';
+import { config } from '../src/config.js';
 
 const BIDDER_CODE = 'raveltech';
 const URL = 'https://pb1.rvlproxy.net/bid/bid';
