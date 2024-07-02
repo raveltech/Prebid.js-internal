@@ -6,7 +6,7 @@ import { config } from '../src/config.js';
 
 const BIDDER_CODE = 'raveltech';
 const URL = 'https://pb1.rvlproxy.net/bid/bid';
-const URL_SIMPLE = 'https://pb1.rvlproxy.net/bid/simplebid';
+// const URL_SIMPLE = 'https://pb1.rvlproxy.net/bid/simplebid';
 
 export const spec = {
   ...baseAdapter,
@@ -56,9 +56,9 @@ export const spec = {
             logInfo('eid.source=', eid.source)
             let ravelId = ZKAD.anonymizeID(uid.id, eid.source);
             logInfo('Anonymized uid.id=', uid.id, 'as byte array of length=', ravelId.length)
-            
+
             tmp.id = ravelId;
-            
+
             eids.push(tmp);
           });
         });
@@ -67,7 +67,6 @@ export const spec = {
           payload.eids = eids;
         }
       }
-
     });
 
     return requests;
