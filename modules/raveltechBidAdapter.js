@@ -1,5 +1,5 @@
 // Import the base adapter
-import { appnexusBidAdapter } from './appnexusBidAdapter.js';
+import { spec as baseAdapter } from './appnexusBidAdapter.js'; // eslint-disable-line prebid/validate-imports
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { logInfo } from '../src/utils.js';
 import { config } from '../src/config.js';
@@ -8,14 +8,14 @@ const BIDDER_CODE = 'raveltech';
 const URL = 'https://pb1.rvlproxy.net/bid/bid';
 const URL_SIMPLE = 'https://pb1.rvlproxy.net/bid/simplebid';
 
-export const raveltechBidAdapter = {
-  ...appnexusBidAdapter,
+export const spec = {
+  ...baseAdapter,
 
   code: BIDDER_CODE,
 
   buildRequests: function(bidRequests, bidderRequest) {
     // call the appnexus adapter first to preserve all initial functions
-    const requests = appnexusBidAdapter.buildRequests.call(this, bidRequests, bidderRequest);
+    const requests = baseAdapter.buildRequests.call(this, bidRequests, bidderRequest);
 
     requests.forEach(request => {
       // Override the request URL
@@ -74,4 +74,4 @@ export const raveltechBidAdapter = {
   }
 };
 
-registerBidder(raveltechBidAdapter);
+registerBidder(spec);
