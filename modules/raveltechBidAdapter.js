@@ -1,7 +1,7 @@
 // Import the base adapter
 import { spec as baseAdapter } from './appnexusBidAdapter.js'; // eslint-disable-line prebid/validate-imports
 import { registerBidder } from '../src/adapters/bidderFactory.js';
-import { logInfo } from '../src/utils.js';
+import { logInfo, logError } from '../src/utils.js';
 import { config } from '../src/config.js';
 
 const BIDDER_CODE = 'raveltech';
@@ -15,7 +15,13 @@ export const spec = {
 
   buildRequests: function(bidRequests, bidderRequest) {
     // call the appnexus adapter first to preserve all initial functions
-    const requests = baseAdapter.buildRequests.call(this, bidRequests, bidderRequest);
+
+    let requests = baseAdapter.buildRequests.call(this, bidRequests, bidderRequest);
+
+    if (!Array.isArray(requests)) {
+      logError('Expected requests to be an array but got:', typeof requests);
+      requests = [requests]; // If requests is not an array, wrap it in an array
+    }
 
     requests.forEach(request => {
       // Override the request URL
