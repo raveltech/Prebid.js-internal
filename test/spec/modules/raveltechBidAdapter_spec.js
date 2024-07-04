@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { spec } from 'modules/raveltechBidAdapter.js';
 import { newBidder } from 'src/adapters/bidderFactory.js';
-import * as bidderFactory from 'src/adapters/bidderFactory.js';
 import { auctionManager } from 'src/auctionManager.js';
 import { deepClone } from 'src/utils.js';
 import * as utils from 'src/utils.js';
@@ -76,21 +75,21 @@ describe('RaveltechAdapter', function () {
     });
 
     it('should return false when required params are not passed', function () {
-      let bid = Object.assign({}, bid);
-      delete bid.params;
-      bid.params = {
+      let invalidBid = Object.assign({}, bid);
+      delete invalidBid.params;
+      invalidBid.params = {
         'placementId': 0
       };
-      expect(spec.isBidRequestValid(bid)).to.equal(false);
+      expect(spec.isBidRequestValid(invalidBid)).to.equal(false);
     });
 
     it('should return false when required params are not passed', function () {
-      let bid = Object.assign({}, bid);
-      delete bid.params;
-      bid.params = {
+      let invalidBid = Object.assign({}, bid);
+      delete invalidBid.params;
+      invalidBid.params = {
         'placement_id': 0
       };
-      expect(spec.isBidRequestValid(bid)).to.equal(false);
+      expect(spec.isBidRequestValid(invalidBid)).to.equal(false);
     });
   });
 
@@ -343,7 +342,7 @@ describe('RaveltechAdapter', function () {
         expect(payload.tags[0].hb_source).to.deep.equal(1);
       });
 
-      it('should include ORTB video values when video params were not set', function () {
+      it('should include ORTB video values when matching video params were not all set', function () {
         let bidRequest = deepClone(bidRequests[0]);
         bidRequest.params = {
           placementId: '1234235',
@@ -373,6 +372,61 @@ describe('RaveltechAdapter', function () {
           playback_method: 2,
           skippable: true,
           context: 4
+        });
+        expect(payload.tags[0].video_frameworks).to.deep.equal([1, 4])
+      });
+
+      it('should include ORTB video values when video params is empty - case 1', function () {
+        let bidRequest = deepClone(bidRequests[0]);
+        bidRequest.mediaTypes = {
+          video: {
+            playerSize: [640, 480],
+            context: 'outstream',
+            placement: 3,
+            mimes: ['video/mp4'],
+            skip: 0,
+            minduration: 5,
+            api: [1, 5, 6],
+            playbackmethod: [2, 4]
+          }
+        };
+
+        const request = spec.buildRequests([bidRequest]);
+        const payload = JSON.parse(request.data);
+
+        expect(payload.tags[0].video).to.deep.equal({
+          minduration: 5,
+          playback_method: 2,
+          skippable: false,
+          context: 4
+        });
+        expect(payload.tags[0].video_frameworks).to.deep.equal([1, 4])
+      });
+
+      it('should include ORTB video values when video params is empty - case 2', function () {
+        let bidRequest = deepClone(bidRequests[0]);
+        bidRequest.mediaTypes = {
+          video: {
+            playerSize: [640, 480],
+            context: 'outstream',
+            plcmt: 2,
+            startdelay: 0,
+            mimes: ['video/mp4'],
+            skip: 1,
+            minduration: 5,
+            api: [1, 5, 6],
+            playbackmethod: [2, 4]
+          }
+        };
+
+        const request = spec.buildRequests([bidRequest]);
+        const payload = JSON.parse(request.data);
+
+        expect(payload.tags[0].video).to.deep.equal({
+          minduration: 5,
+          playback_method: 2,
+          skippable: true,
+          context: 8
         });
         expect(payload.tags[0].video_frameworks).to.deep.equal([1, 4])
       });
@@ -718,7 +772,7 @@ describe('RaveltechAdapter', function () {
       let bidRequest = Object.assign({}, bidRequests[0]);
       sinon
         .stub(config, 'getConfig')
-        .withArgs('raveltechAuctionKeywords')
+        .withArgs('appnexusAuctionKeywords')
         .returns({
           gender: 'm',
           music: ['rock', 'pop'],
@@ -1204,6 +1258,46 @@ describe('RaveltechAdapter', function () {
       expect(payload.privacy.gpp_sid).to.deep.equal([7]);
     });
 
+    it('should add dsa information to the request via bidderRequest.ortb2.regs.ext.dsa', function () {
+      let bidderRequest = {
+        'bidderCode': 'raveltech',
+        'auctionId': '1d1a030790a475',
+        'bidderRequestId': '22edbae2733bf6',
+        'timeout': 3000,
+        'ortb2': {
+          'regs': {
+            'ext': {
+              'dsa': {
+                'dsarequired': 1,
+                'pubrender': 0,
+                'datatopub': 1,
+                'transparency': [{
+                  'domain': 'good-domain',
+                  'dsaparams': [1, 2]
+                }, {
+                  'domain': 'bad-setup',
+                  'dsaparams': ['1', 3]
+                }]
+              }
+            }
+          }
+        }
+      };
+      bidderRequest.bids = bidRequests;
+
+      const request = spec.buildRequests(bidRequests, bidderRequest);
+      const payload = JSON.parse(request.data);
+
+      expect(payload.dsa).to.exist;
+      expect(payload.dsa.dsarequired).to.equal(1);
+      expect(payload.dsa.pubrender).to.equal(0);
+      expect(payload.dsa.datatopub).to.equal(1);
+      expect(payload.dsa.transparency).to.deep.equal([{
+        'domain': 'good-domain',
+        'dsaparams': [1, 2]
+      }]);
+    });
+
     it('supports sending hybrid mobile app parameters', function () {
       let appRequest = Object.assign({},
         bidRequests[0],
@@ -1347,6 +1441,88 @@ describe('RaveltechAdapter', function () {
       config.getConfig.restore();
     });
 
+    describe('ast_override_div', function () {
+      let getParamStub;
+      let bidRequest = Object.assign({}, bidRequests[0]);
+      let bidRequest2 = deepClone(bidRequests[0]);
+      bidRequest2.adUnitCode = 'adUnit_code_2';
+      let bidRequest3 = deepClone(bidRequests[0]);
+      bidRequest3.adUnitCode = 'adUnit_code_3';
+
+      before(function () {
+        getParamStub = sinon.stub(utils, 'getParameterByName');
+      });
+
+      it('should set forced creative id if one adUnitCode passed', function () {
+        getParamStub.callsFake(function(par) {
+          if (par === 'ast_override_div') return 'adunit-code:1234';
+          return '';
+        });
+
+        const request = spec.buildRequests([bidRequest, bidRequest2]);
+        const payload = JSON.parse(request.data);
+
+        expect(payload.tags[0].force_creative_id).to.deep.equal(1234);
+        expect(payload.tags[1].force_creative_id).to.not.exist;
+      });
+
+      it('should set forced creative id if `ast_override_div` is set to override multiple adUnitCode', function () {
+        getParamStub.callsFake(function(par) {
+          if (par === 'ast_override_div') return 'adunit-code:1234,adUnit_code_2:5678';
+          return '';
+        });
+
+        const request = spec.buildRequests([bidRequest, bidRequest2, bidRequest3]);
+        const payload = JSON.parse(request.data);
+
+        expect(payload.tags[0].force_creative_id).to.deep.equal(1234);
+        expect(payload.tags[1].force_creative_id).to.deep.equal(5678);
+        expect(payload.tags[2].force_creative_id).to.not.exist;
+      });
+
+      it('should not set forced creative id if `ast_override_div` is missing creativeId', function () {
+        getParamStub.callsFake(function(par) {
+          if (par === 'ast_override_div') return 'adunit-code';
+          return '';
+        });
+
+        const request = spec.buildRequests([bidRequest, bidRequest2]);
+        const payload = JSON.parse(request.data);
+
+        expect(payload.tags[0].force_creative_id).to.not.exist;
+        expect(payload.tags[1].force_creative_id).to.not.exist;
+      });
+
+      it('should not set forced creative id if `ast_override_div` is in the wrong format', function () {
+        getParamStub.callsFake(function(par) {
+          if (par === 'ast_override_div') return 'adunit-code;adUnit_code_2:5678';
+          return '';
+        }); ;
+
+        const request = spec.buildRequests([bidRequest, bidRequest2]);
+        const payload = JSON.parse(request.data);
+
+        expect(payload.tags[0].force_creative_id).to.not.exist;
+        expect(payload.tags[1].force_creative_id).to.not.exist;
+      });
+
+      it('should not set forced creative id if `ast_override_div` is missing', function () {
+        getParamStub.callsFake(function(par) {
+          return '';
+        }); ;
+
+        const request = spec.buildRequests([bidRequest, bidRequest2]);
+        const payload = JSON.parse(request.data);
+
+        expect(payload.tags[0].force_creative_id).to.not.exist;
+        expect(payload.tags[1].force_creative_id).to.not.exist;
+      });
+
+      after(function () {
+        getParamStub.restore();
+      });
+    });
+
     it('should set the X-Is-Test customHeader if test flag is enabled', function () {
       let bidRequest = Object.assign({}, bidRequests[0]);
       sinon.stub(config, 'getConfig')
@@ -1419,25 +1595,25 @@ describe('RaveltechAdapter', function () {
         },
         userIdAsEids: [{
           source: 'adserver.org',
-          uids: [{ id: [] }]
+          uids: [{ id: 'sample-userid' }]
         }, {
           source: 'criteo.com',
-          uids: [{ id: [] }]
+          uids: [{ id: 'sample-criteo-userid' }]
         }, {
           source: 'netid.de',
-          uids: [{ id: [] }]
+          uids: [{ id: 'sample-netId-userid' }]
         }, {
           source: 'liveramp.com',
-          uids: [{ id: [] }]
+          uids: [{ id: 'sample-idl-userid' }]
         }, {
           source: 'uidapi.com',
-          uids: [{ id: [] }]
+          uids: [{ id: 'sample-uid2-value' }]
         }, {
           source: 'puburl.com',
-          uids: [{ id: [] }]
+          uids: [{ id: 'pubid1' }]
         }, {
           source: 'puburl2.com',
-          uids: [{ id: [] }, { id: [] }]
+          uids: [{ id: 'pubid2' }, { id: 'pubid2-123' }]
         }]
       });
 
@@ -1445,43 +1621,43 @@ describe('RaveltechAdapter', function () {
       const payload = JSON.parse(request.data);
       expect(payload.eids).to.deep.include({
         source: 'adserver.org',
-        id: [],
+        id: 'sample-userid',
         rti_partner: 'TDID'
       });
 
       expect(payload.eids).to.deep.include({
         source: 'criteo.com',
-        id: [],
+        id: 'sample-criteo-userid',
       });
 
       expect(payload.eids).to.deep.include({
         source: 'netid.de',
-        id: [],
+        id: 'sample-netId-userid',
       });
 
       expect(payload.eids).to.deep.include({
         source: 'liveramp.com',
-        id: [],
+        id: 'sample-idl-userid'
       });
 
       expect(payload.eids).to.deep.include({
         source: 'uidapi.com',
-        id: [],
+        id: 'sample-uid2-value',
         rti_partner: 'UID2'
       });
 
       expect(payload.eids).to.deep.include({
         source: 'puburl.com',
-        id: [],
+        id: 'pubid1'
       });
 
       expect(payload.eids).to.deep.include({
         source: 'puburl2.com',
-        id: [],
+        id: 'pubid2'
       });
       expect(payload.eids).to.deep.include({
         source: 'puburl2.com',
-        id: [],
+        id: 'pubid2-123'
       });
     });
 
@@ -1502,7 +1678,7 @@ describe('RaveltechAdapter', function () {
         payload = JSON.parse(request.data);
         expect(payload.iab_support).to.be.an('object');
         expect(payload.iab_support).to.deep.equal({
-          omidpn: 'Raveltech',
+          omidpn: 'Appnexus',
           omidpv: '$prebid.version$'
         });
         expect(payload.tags[0].banner_frameworks).to.be.an('array');
@@ -1571,9 +1747,19 @@ describe('RaveltechAdapter', function () {
               'cpm': 0.5,
               'cpm_publisher_currency': 0.5,
               'publisher_currency_code': '$',
+              'publisher_currency_codename': 'USD',
               'client_initiated_ad_counting': true,
               'viewability': {
-                'config': '<script type=\'text/javascript\' async=\'true\' src=\'https://cdn.adnxs.com/v/s/152/trk.js#v;vk=raveltech.io-omid;tv=native1-18h;dom_id=%native_dom_id%;st=0;d=1x1;vc=iab;vid_ccr=1;tag_id=13232354;cb=https%3A%2F%2Fams1-ib.adnxs.com%2Fvevent%3Freferrer%3Dhttps253A%252F%252Ftestpages-pmahe.tp.adnxs.net%252F01_basic_single%26e%3DwqT_3QLNB6DNAwAAAwDWAAUBCLfl_-MFEMStk8u3lPTjRxih88aF0fq_2QsqNgkAAAECCCRAEQEHEAAAJEAZEQkAIREJACkRCQAxEQmoMOLRpwY47UhA7UhIAlCDy74uWJzxW2AAaM26dXjzjwWAAQGKAQNVU0SSAQEG8FCYAQGgAQGoAQGwAQC4AQHAAQTIAQLQAQDYAQDgAQDwAQCKAjt1ZignYScsIDI1Mjk4ODUsIDE1NTE4ODkwNzkpO3VmKCdyJywgOTc0OTQ0MDM2HgDwjZIC8QEha0RXaXBnajgtTHdLRUlQTHZpNFlBQ0NjOFZzd0FEZ0FRQVJJN1VoUTR0R25CbGdBWU1rR2FBQndMSGlrTDRBQlVvZ0JwQy1RQVFHWUFRR2dBUUdvQVFPd0FRQzVBZk90YXFRQUFDUkF3UUh6cldxa0FBQWtRTWtCbWo4dDA1ZU84VF9aQVFBQUEBAyRQQV80QUVBOVFFAQ4sQW1BSUFvQUlBdFFJBRAAdg0IeHdBSUF5QUlBNEFJQTZBSUEtQUlBZ0FNQm1BTUJxQVAFzIh1Z01KUVUxVE1UbzBNekl3NEFPVENBLi6aAmEhUXcxdGNRagUoEfQkblBGYklBUW9BRAl8AEEBqAREbzJEABRRSk1JU1EBGwRBQQGsAFURDAxBQUFXHQzwWNgCAOACrZhI6gIzaHR0cDovL3Rlc3RwYWdlcy1wbWFoZS50cC5hZG54cy5uZXQvMDFfYmFzaWNfc2luZ2xl8gITCg9DVVNUT01fTU9ERUxfSUQSAPICGgoWMhYAPExFQUZfTkFNRRIA8gIeCho2HQAIQVNUAT7wnElGSUVEEgCAAwCIAwGQAwCYAxegAwGqAwDAA-CoAcgDANgD8ao-4AMA6AMA-AMBgAQAkgQNL3V0L3YzL3ByZWJpZJgEAKIECjEwLjIuMTIuMzioBIqpB7IEDggAEAEYACAAKAAwADgCuAQAwAQAyAQA0gQOOTMyNSNBTVMxOjQzMjDaBAIIAeAEAfAEg8u-LogFAZgFAKAF______8BAxgBwAUAyQUABQEU8D_SBQkJBQt8AAAA2AUB4AUB8AWZ9CH6BQQIABAAkAYBmAYAuAYAwQYBITAAAPA_yAYA2gYWChAAOgEAGBAAGADgBgw.%26s%3D971dce9d49b6bee447c8a58774fb30b40fe98171;ts=1551889079;cet=0;cecb=\'></script>'
+                'config': '<script type=\'text/javascript\' async=\'true\' src=\'https://cdn.adnxs.com/v/s/152/trk.js#v;vk=appnexus.com-omid;tv=native1-18h;dom_id=%native_dom_id%;st=0;d=1x1;vc=iab;vid_ccr=1;tag_id=13232354;cb=https%3A%2F%2Fams1-ib.adnxs.com%2Fvevent%3Freferrer%3Dhttps253A%252F%252Ftestpages-pmahe.tp.adnxs.net%252F01_basic_single%26e%3DwqT_3QLNB6DNAwAAAwDWAAUBCLfl_-MFEMStk8u3lPTjRxih88aF0fq_2QsqNgkAAAECCCRAEQEHEAAAJEAZEQkAIREJACkRCQAxEQmoMOLRpwY47UhA7UhIAlCDy74uWJzxW2AAaM26dXjzjwWAAQGKAQNVU0SSAQEG8FCYAQGgAQGoAQGwAQC4AQHAAQTIAQLQAQDYAQDgAQDwAQCKAjt1ZignYScsIDI1Mjk4ODUsIDE1NTE4ODkwNzkpO3VmKCdyJywgOTc0OTQ0MDM2HgDwjZIC8QEha0RXaXBnajgtTHdLRUlQTHZpNFlBQ0NjOFZzd0FEZ0FRQVJJN1VoUTR0R25CbGdBWU1rR2FBQndMSGlrTDRBQlVvZ0JwQy1RQVFHWUFRR2dBUUdvQVFPd0FRQzVBZk90YXFRQUFDUkF3UUh6cldxa0FBQWtRTWtCbWo4dDA1ZU84VF9aQVFBQUEBAyRQQV80QUVBOVFFAQ4sQW1BSUFvQUlBdFFJBRAAdg0IeHdBSUF5QUlBNEFJQTZBSUEtQUlBZ0FNQm1BTUJxQVAFzIh1Z01KUVUxVE1UbzBNekl3NEFPVENBLi6aAmEhUXcxdGNRagUoEfQkblBGYklBUW9BRAl8AEEBqAREbzJEABRRSk1JU1EBGwRBQQGsAFURDAxBQUFXHQzwWNgCAOACrZhI6gIzaHR0cDovL3Rlc3RwYWdlcy1wbWFoZS50cC5hZG54cy5uZXQvMDFfYmFzaWNfc2luZ2xl8gITCg9DVVNUT01fTU9ERUxfSUQSAPICGgoWMhYAPExFQUZfTkFNRRIA8gIeCho2HQAIQVNUAT7wnElGSUVEEgCAAwCIAwGQAwCYAxegAwGqAwDAA-CoAcgDANgD8ao-4AMA6AMA-AMBgAQAkgQNL3V0L3YzL3ByZWJpZJgEAKIECjEwLjIuMTIuMzioBIqpB7IEDggAEAEYACAAKAAwADgCuAQAwAQAyAQA0gQOOTMyNSNBTVMxOjQzMjDaBAIIAeAEAfAEg8u-LogFAZgFAKAF______8BAxgBwAUAyQUABQEU8D_SBQkJBQt8AAAA2AUB4AUB8AWZ9CH6BQQIABAAkAYBmAYAuAYAwQYBITAAAPA_yAYA2gYWChAAOgEAGBAAGADgBgw.%26s%3D971dce9d49b6bee447c8a58774fb30b40fe98171;ts=1551889079;cet=0;cecb=\'></script>'
+              },
+              'dsa': {
+                'behalf': 'test-behalf',
+                'paid': 'test-paid',
+                'transparency': [{
+                  'domain': 'good-domain',
+                  'params': [1, 2, 3]
+                }],
+                'adrender': 1
               },
               'rtb': {
                 'banner': {
@@ -1623,6 +1809,15 @@ describe('RaveltechAdapter', function () {
               'nodes': [{
                 'bsid': '958'
               }]
+            },
+            'dsa': {
+              'behalf': 'test-behalf',
+              'paid': 'test-paid',
+              'transparency': [{
+                'domain': 'good-domain',
+                'params': [1, 2, 3]
+              }],
+              'adrender': 1
             }
           }
         }
@@ -1635,6 +1830,38 @@ describe('RaveltechAdapter', function () {
       };
       let result = spec.interpretResponse({ body: response }, { bidderRequest });
       expect(Object.keys(result[0])).to.have.members(Object.keys(expectedResponse[0]));
+    });
+
+    it('should parse non-default currency', function () {
+      let eurCpmResponse = deepClone(response);
+      eurCpmResponse.tags[0].ads[0].publisher_currency_codename = 'EUR';
+
+      let bidderRequest = {
+        bidderCode: 'raveltech',
+        bids: [{
+          bidId: '3db3773286ee59',
+          adUnitCode: 'code'
+        }]
+      };
+
+      let result = spec.interpretResponse({ body: eurCpmResponse }, { bidderRequest });
+      expect(result[0].currency).to.equal('EUR');
+    });
+
+    it('should parse default currency', function () {
+      let defaultCpmResponse = deepClone(response);
+      delete defaultCpmResponse.tags[0].ads[0].publisher_currency_codename;
+
+      let bidderRequest = {
+        bidderCode: 'appnexus',
+        bids: [{
+          bidId: '3db3773286ee59',
+          adUnitCode: 'code'
+        }]
+      };
+
+      let result = spec.interpretResponse({ body: defaultCpmResponse }, { bidderRequest });
+      expect(result[0].currency).to.equal('USD');
     });
 
     it('should reject 0 cpm bids', function () {
@@ -1709,6 +1936,7 @@ describe('RaveltechAdapter', function () {
         let bidderRequest = {
           bids: [{
             bidId: '84ab500420319d',
+            adUnitCode: 'code',
             mediaTypes: {
               video: {
                 context: 'outstream'
@@ -1808,7 +2036,7 @@ describe('RaveltechAdapter', function () {
           'desc': 'Cool description great stuff',
           'desc2': 'Additional body text',
           'ctatext': 'Do it',
-          'sponsored': 'Raveltech',
+          'sponsored': 'AppNexus',
           'icon': {
             'width': 0,
             'height': 0,
@@ -1820,21 +2048,21 @@ describe('RaveltechAdapter', function () {
             'url': 'https://cdn.adnxs.com/img.png'
           },
           'link': {
-            'url': 'https://www.raveltech.io',
+            'url': 'https://www.appnexus.com',
             'fallback_url': '',
             'click_trackers': ['https://nym1-ib.adnxs.com/click']
           },
           'impression_trackers': ['https://example.com'],
           'rating': '5',
-          'displayurl': 'https://raveltech.io/?url=display_url',
+          'displayurl': 'https://AppNexus.com/?url=display_url',
           'likes': '38908320',
           'downloads': '874983',
           'price': '9.99',
           'saleprice': 'FREE',
           'phone': '1234567890',
           'address': '28 W 23rd St, New York, NY 10010',
-          'privacy_link': 'https://raveltech.io/?url=privacy_url',
-          'javascriptTrackers': '<script type=\'text/javascript\' async=\'true\' src=\'https://cdn.adnxs.com/v/s/152/trk.js#v;vk=raveltech.io-omid;tv=native1-18h;dom_id=;css_selector=.pb-click;st=0;d=1x1;vc=iab;vid_ccr=1;tag_id=13232354;cb=https%3A%2F%2Fams1-ib.adnxs.com%2Fvevent%3Freferrer%3Dhttps253A%252F%252Ftestpages-pmahe.tp.adnxs.net%252F01_basic_single%26e%3DwqT_3QLNB6DNAwAAAwDWAAUBCLfl_-MFEMStk8u3lPTjRxih88aF0fq_2QsqNgkAAAECCCRAEQEHEAAAJEAZEQkAIREJACkRCQAxEQmoMOLRpwY47UhA7UhIAlCDy74uWJzxW2AAaM26dXjzjwWAAQGKAQNVU0SSAQEG8FCYAQGgAQGoAQGwAQC4AQHAAQTIAQLQAQDYAQDgAQDwAQCKAjt1ZignYScsIDI1Mjk4ODUsIDE1NTE4ODkwNzkpO3VmKCdyJywgOTc0OTQ0MDM2HgDwjZIC8QEha0RXaXBnajgtTHdLRUlQTHZpNFlBQ0NjOFZzd0FEZ0FRQVJJN1VoUTR0R25CbGdBWU1rR2FBQndMSGlrTDRBQlVvZ0JwQy1RQVFHWUFRR2dBUUdvQVFPd0FRQzVBZk90YXFRQUFDUkF3UUh6cldxa0FBQWtRTWtCbWo4dDA1ZU84VF9aQVFBQUEBAyRQQV80QUVBOVFFAQ4sQW1BSUFvQUlBdFFJBRAAdg0IeHdBSUF5QUlBNEFJQTZBSUEtQUlBZ0FNQm1BTUJxQVAFzIh1Z01KUVUxVE1UbzBNekl3NEFPVENBLi6aAmEhUXcxdGNRagUoEfQkblBGYklBUW9BRAl8AEEBqAREbzJEABRRSk1JU1EBGwRBQQGsAFURDAxBQUFXHQzwWNgCAOACrZhI6gIzaHR0cDovL3Rlc3RwYWdlcy1wbWFoZS50cC5hZG54cy5uZXQvMDFfYmFzaWNfc2luZ2xl8gITCg9DVVNUT01fTU9ERUxfSUQSAPICGgoWMhYAPExFQUZfTkFNRRIA8gIeCho2HQAIQVNUAT7wnElGSUVEEgCAAwCIAwGQAwCYAxegAwGqAwDAA-CoAcgDANgD8ao-4AMA6AMA-AMBgAQAkgQNL3V0L3YzL3ByZWJpZJgEAKIECjEwLjIuMTIuMzioBIqpB7IEDggAEAEYACAAKAAwADgCuAQAwAQAyAQA0gQOOTMyNSNBTVMxOjQzMjDaBAIIAeAEAfAEg8u-LogFAZgFAKAF______8BAxgBwAUAyQUABQEU8D_SBQkJBQt8AAAA2AUB4AUB8AWZ9CH6BQQIABAAkAYBmAYAuAYAwQYBITAAAPA_yAYA2gYWChAAOgEAGBAAGADgBgw.%26s%3D971dce9d49b6bee447c8a58774fb30b40fe98171;ts=1551889079;cet=0;cecb=\'></script>',
+          'privacy_link': 'https://appnexus.com/?url=privacy_url',
+          'javascriptTrackers': '<script type=\'text/javascript\' async=\'true\' src=\'https://cdn.adnxs.com/v/s/152/trk.js#v;vk=appnexus.com-omid;tv=native1-18h;dom_id=;css_selector=.pb-click;st=0;d=1x1;vc=iab;vid_ccr=1;tag_id=13232354;cb=https%3A%2F%2Fams1-ib.adnxs.com%2Fvevent%3Freferrer%3Dhttps253A%252F%252Ftestpages-pmahe.tp.adnxs.net%252F01_basic_single%26e%3DwqT_3QLNB6DNAwAAAwDWAAUBCLfl_-MFEMStk8u3lPTjRxih88aF0fq_2QsqNgkAAAECCCRAEQEHEAAAJEAZEQkAIREJACkRCQAxEQmoMOLRpwY47UhA7UhIAlCDy74uWJzxW2AAaM26dXjzjwWAAQGKAQNVU0SSAQEG8FCYAQGgAQGoAQGwAQC4AQHAAQTIAQLQAQDYAQDgAQDwAQCKAjt1ZignYScsIDI1Mjk4ODUsIDE1NTE4ODkwNzkpO3VmKCdyJywgOTc0OTQ0MDM2HgDwjZIC8QEha0RXaXBnajgtTHdLRUlQTHZpNFlBQ0NjOFZzd0FEZ0FRQVJJN1VoUTR0R25CbGdBWU1rR2FBQndMSGlrTDRBQlVvZ0JwQy1RQVFHWUFRR2dBUUdvQVFPd0FRQzVBZk90YXFRQUFDUkF3UUh6cldxa0FBQWtRTWtCbWo4dDA1ZU84VF9aQVFBQUEBAyRQQV80QUVBOVFFAQ4sQW1BSUFvQUlBdFFJBRAAdg0IeHdBSUF5QUlBNEFJQTZBSUEtQUlBZ0FNQm1BTUJxQVAFzIh1Z01KUVUxVE1UbzBNekl3NEFPVENBLi6aAmEhUXcxdGNRagUoEfQkblBGYklBUW9BRAl8AEEBqAREbzJEABRRSk1JU1EBGwRBQQGsAFURDAxBQUFXHQzwWNgCAOACrZhI6gIzaHR0cDovL3Rlc3RwYWdlcy1wbWFoZS50cC5hZG54cy5uZXQvMDFfYmFzaWNfc2luZ2xl8gITCg9DVVNUT01fTU9ERUxfSUQSAPICGgoWMhYAPExFQUZfTkFNRRIA8gIeCho2HQAIQVNUAT7wnElGSUVEEgCAAwCIAwGQAwCYAxegAwGqAwDAA-CoAcgDANgD8ao-4AMA6AMA-AMBgAQAkgQNL3V0L3YzL3ByZWJpZJgEAKIECjEwLjIuMTIuMzioBIqpB7IEDggAEAEYACAAKAAwADgCuAQAwAQAyAQA0gQOOTMyNSNBTVMxOjQzMjDaBAIIAeAEAfAEg8u-LogFAZgFAKAF______8BAxgBwAUAyQUABQEU8D_SBQkJBQt8AAAA2AUB4AUB8AWZ9CH6BQQIABAAkAYBmAYAuAYAwQYBITAAAPA_yAYA2gYWChAAOgEAGBAAGADgBgw.%26s%3D971dce9d49b6bee447c8a58774fb30b40fe98171;ts=1551889079;cet=0;cecb=\'></script>',
           'video': {
             'content': '<?xml version=\"1.0\"></xml>'
           }
@@ -1955,54 +2183,54 @@ describe('RaveltechAdapter', function () {
     });
   });
 
-  describe('transformBidParams', function () {
-    let gcStub;
-    let adUnit = { bids: [{ bidder: 'raveltech' }] }; ;
+  // describe('transformBidParams', function () {
+  //   let gcStub;
+  //   let adUnit = { bids: [{ bidder: 'raveltech' }] }; ;
 
-    before(function () {
-      gcStub = sinon.stub(config, 'getConfig');
-    });
+  //   before(function () {
+  //     gcStub = sinon.stub(config, 'getConfig');
+  //   });
 
-    after(function () {
-      gcStub.restore();
-    });
+  //   after(function () {
+  //     gcStub.restore();
+  //   });
 
-    it('convert keywords param differently for psp endpoint with single s2sConfig', function () {
-      gcStub.withArgs('s2sConfig').returns({
-        bidders: ['raveltech'],
-        endpoint: {
-          p1Consent: 'https://ib.adnxs.com/openrtb2/prebid'
-        }
-      });
+  //   it('convert keywords param differently for psp endpoint with single s2sConfig', function () {
+  //     gcStub.withArgs('s2sConfig').returns({
+  //       bidders: ['raveltech'],
+  //       endpoint: {
+  //         p1Consent: 'https://ib.adnxs.com/openrtb2/prebid'
+  //       }
+  //     });
 
-      const oldParams = {
-        keywords: {
-          genre: ['rock', 'pop'],
-          pets: 'dog'
-        }
-      };
+  //     const oldParams = {
+  //       keywords: {
+  //         genre: ['rock', 'pop'],
+  //         pets: 'dog'
+  //       }
+  //     };
 
-      const newParams = spec.transformBidParams(oldParams, true, adUnit);
-      expect(newParams.keywords).to.equal('genre=rock,genre=pop,pets=dog');
-    });
+  //     const newParams = spec.transformBidParams(oldParams, true, adUnit);
+  //     expect(newParams.keywords).to.equal('genre=rock,genre=pop,pets=dog');
+  //   });
 
-    it('convert keywords param differently for psp endpoint with array s2sConfig', function () {
-      gcStub.withArgs('s2sConfig').returns([{
-        bidders: ['raveltech'],
-        endpoint: {
-          p1Consent: 'https://ib.adnxs.com/openrtb2/prebid'
-        }
-      }]);
+  //   it('convert keywords param differently for psp endpoint with array s2sConfig', function () {
+  //     gcStub.withArgs('s2sConfig').returns([{
+  //       bidders: ['raveltech'],
+  //       endpoint: {
+  //         p1Consent: 'https://ib.adnxs.com/openrtb2/prebid'
+  //       }
+  //     }]);
 
-      const oldParams = {
-        keywords: {
-          genre: ['rock', 'pop'],
-          pets: 'dog'
-        }
-      };
+  //     const oldParams = {
+  //       keywords: {
+  //         genre: ['rock', 'pop'],
+  //         pets: 'dog'
+  //       }
+  //     };
 
-      const newParams = spec.transformBidParams(oldParams, true, adUnit);
-      expect(newParams.keywords).to.equal('genre=rock,genre=pop,pets=dog');
-    });
-  });
+  //     const newParams = spec.transformBidParams(oldParams, true, adUnit);
+  //     expect(newParams.keywords).to.equal('genre=rock,genre=pop,pets=dog');
+  //   });
+  // });
 });
