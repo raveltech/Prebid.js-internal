@@ -45,12 +45,6 @@ export const spec = {
 
           let tmp = {'source': eid.source, 'id': uid.id};
 
-          if (eid.source == 'adserver.org') {
-            tmp.rti_partner = 'TDID';
-          } else if (eid.source == 'uidapi.com') {
-            tmp.rti_partner = 'UID2';
-          }
-
           logInfo('eid.source=', eid.source)
           let ravelId = ZKAD.anonymizeID(uid.id, eid.source);
           logInfo('Anonymized uid.id=', uid.id, 'as byte array of length=', ravelId.length)
