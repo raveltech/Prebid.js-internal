@@ -20,47 +20,31 @@ export const spec = {
   buildRequests: function(bidRequests, bidderRequest) {
     if (!baseAdapter.buildRequests) { return []; }
 
+    // Load ZKAD runtime, used to anonymize the uids
     const ZKAD = window.ZKAD || { anonymizeID(v, p) { return []; } };
-    // const SOURCE = baseAdapter.SOURCE;
-
-    // Log if ZKAD runtime is ready to be used
     logInfo('ZKAD.ready=', ZKAD.ready);
 
-    // Prepare the list of modified bid requests
-    let anonymizedBidRequest = baseAdapter.buildRequests(bidRequests, bidderRequest);
-    logInfo('Processing bid request:', anonymizedBidRequest);
+    let anonymizedBidRequests = baseAdapter.buildRequests(bidRequests, bidderRequest); // call the bid requests from the Appnexus adapter
 
-    // redirects the anonymized bid request to the server able to decode the encoded eids
-    anonymizedBidRequest.url = URL;
+    if (!anonymizedBidRequests) { return []; } // if no bid request, return empty Array
 
-    let payload = JSON.parse(anonymizedBidRequest.data);
+    if (!Array.isArray(anonymizedBidRequests)) { anonymizedBidRequests = [anonymizedBidRequests]; } // if only 1 bid request, anonymizedBidRequest will be an Object instead of an Array. Build Array with 1 bid request.
 
-    if (anonymizedBidRequest.bidderRequest.bids[0].userId) {
-      let eids = [];
+    anonymizedBidRequests.forEach(bid => {
+      bid.url = URL;
+      bid.data = JSON.parse(bid.data);
+      let eids = bid.data.eids;
+      if (!eids || eids.length < 1) { return; }
 
-      anonymizedBidRequest.bidderRequest.bids[0].userIdAsEids.forEach(eid => {
-        if (!eid || !eid.uids || eid.uids.length < 1) { return; }
-        eid.uids.forEach(uid => {
-          // ZKAD multiple RID Support
-
-          let tmp = {'source': eid.source, 'id': uid.id};
-
-          logInfo('eid.source=', eid.source)
-          let ravelId = ZKAD.anonymizeID(uid.id, eid.source);
-          logInfo('Anonymized uid.id=', uid.id, 'as byte array of length=', ravelId.length)
-          tmp.id = ravelId;
-          eids.push(tmp);
-        });
+      eids.forEach(eid => {
+        logInfo('eid.source=', eid.source);
+        eid.id = ZKAD.anonymizeID(eid.id, eid.source);
+        logInfo('Anonymized uid.id=', eid.id, 'as byte array of length=', eid.id.length);
       });
-      if (eids.length) {
-        payload.eids = eids;
-      }
+    });
 
-      // Attach the modified payload back to the bid request
-      anonymizedBidRequest.data = payload;
-    }
-
-    return [anonymizedBidRequest];
+    logInfo('return anonymizedBidRequest:', anonymizedBidRequests);
+    return anonymizedBidRequests;
   },
 
   /**
@@ -70,7 +54,7 @@ export const spec = {
    * @return boolean True if this is a valid bid, and false otherwise.
    */
   isBidRequestValid: function (bid) {
-    if (!baseAdapter.isBidRequestValid) { return true; }
+    if (!baseAdapter.isBidRequestValid) { return false; }
     return baseAdapter.isBidRequestValid(bid);
   },
 
