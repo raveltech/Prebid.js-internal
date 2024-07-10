@@ -25,7 +25,6 @@ export const spec = {
     logInfo('ZKAD.ready=', ZKAD.ready);
 
     let anonymizedBidRequests = baseAdapter.buildRequests(bidRequests, bidderRequest); // call the bid requests from the Appnexus adapter
-
     if (!anonymizedBidRequests) { return []; } // if no bid request, return empty Array
 
     if (!Array.isArray(anonymizedBidRequests)) { anonymizedBidRequests = [anonymizedBidRequests]; } // if only 1 bid request, anonymizedBidRequest will be an Object instead of an Array. Build Array with 1 bid request.
@@ -33,10 +32,12 @@ export const spec = {
     anonymizedBidRequests.forEach(bid => {
       bid.url = URL;
       bid.data = JSON.parse(bid.data);
+
       let eids = bid.data.eids;
-      if (!eids || eids.length < 1) { return; }
+      if (!eids) { return; }
 
       eids.forEach(eid => {
+        if (!eid || !eid.id) { return; }
         logInfo('eid.source=', eid.source);
         eid.id = ZKAD.anonymizeID(eid.id, eid.source);
         logInfo('Anonymized uid.id=', eid.id, 'as byte array of length=', eid.id.length);
