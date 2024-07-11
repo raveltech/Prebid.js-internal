@@ -3,12 +3,12 @@
 ```
 Module Name:  Ravel Bid Adapter
 Module Type:  Bidder Adapter
-Maintainer: prebid@raveltech.io
+Maintainer: maintainers@raveltech.io
 ```
 
 # Description
 
-Connects to Appnexus exchange through Ravel Identifier for bids.
+Connects to Appnexus exchange through encrypted UIDs called Ravel Identifier (RIDs).
 
 Appnexus bid adapter supports Banner, Video (instream and outstream) and Native.
 
