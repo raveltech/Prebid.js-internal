@@ -49,7 +49,7 @@ describe('RavelTechAdapter', function () {
         const eids = bid.data.eids;
 
         eids.forEach(eid => {
-          if (eid.source == 'fake-source') { return; }
+          if (eid.source === 'not-eligible-source') { return; }
           expect(typeof eid.id).to.equal('string');
           expect(eid.id.length).to.be.at.least(RID_LENGTH);
         })
