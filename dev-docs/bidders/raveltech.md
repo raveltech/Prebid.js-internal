@@ -24,6 +24,8 @@ sidebarType: 1
 ### Table of Contents
 
 - [Table of Contents](#table-of-contents)
+  - [RavelTech Bid Adapter](#raveltech-bid-adapter)
+  - [AppNexus](#appnexus)
   - [Bid Params](#bid-params)
   - [Video Object](#video-object)
   - [User Object](#user-object)
@@ -37,9 +39,7 @@ sidebarType: 1
   - [Debug Auction](#debug-auction)
   - [Prebid Server Test Request](#prebid-server-test-request)
 
-
-
-{: .alert.alert-danger :}
+### RavelTech bid adapter
 The RavelTech bidder adapter introduces an additional layer of privacy to the AppNexus one.
 It encrypts the uids with homomorphic encryption and updates the payload of the bid requests.
 
@@ -52,6 +52,8 @@ The most recent version of the AppNexus documentation can be found at [https://g
 
 <a name="appnexus-bid-params"></a>
 
+
+### AppNexus
 All AppNexus (Xandr) placements included in a single call to `requestBids` must belong to the same parent Publisher.  If placements from two different publishers are included in the call, the AppNexus bidder will not return any demand for those placements. <br />
 *Note: This requirement does not apply to adapters that are [aliasing](/dev-docs/publisher-api-reference/aliasBidder.html) the AppNexus adapter.*
 
